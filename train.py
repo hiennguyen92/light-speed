@@ -20,6 +20,7 @@ from losses import discriminator_loss, feature_loss, generator_loss, kl_loss
 from mel_processing import mel_spectrogram_torch, spec_to_mel_torch
 from models import MultiPeriodDiscriminator, SynthesizerTrn
 from tfloader import load_tfdata
+import gc
 
 #### COMMAND LINE ARGUMENTS ####
 parser = ArgumentParser()
@@ -27,7 +28,7 @@ parser.add_argument("--config", type=str, default="config.json")
 parser.add_argument("--tfdata", type=str, default="data/tfdata")
 parser.add_argument("--log-dir", type=Path, default="logs")
 parser.add_argument("--ckpt-dir", type=Path, default="ckpts")
-parser.add_argument("--batch-size", type=int, default=16)
+parser.add_argument("--batch-size", type=int, default=8)
 parser.add_argument("--compile", action="store_true", default=False)
 parser.add_argument("--device", type=str, default="cuda")
 parser.add_argument("--seed", type=int, default=42)
@@ -382,6 +383,8 @@ for epoch in range(_epoch + 1, 100_000):
                 if len(all_ckpts) >= 11 and FLAGS.rm_old_ckpt:
                     all_ckpts[0].unlink()
                     del all_ckpts[0]
+        gc.collect()
+        torch.cuda.empty_cache()
     if RANK == 0:
         lr = optim_g.param_groups[0]["lr"]
         train_writer.add_scalar("lr", lr, global_step=step)
