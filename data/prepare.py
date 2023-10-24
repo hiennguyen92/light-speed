@@ -8,9 +8,9 @@ parser.add_argument("--dataset-dir", type=Path, default="dataset")
 parser.add_argument("--tfdata-dir", type=Path, default="tfdata")
 FLAGS = parser.parse_args()
 
-FLAGS.tfdata_dir.append("/test").mkdir(exist_ok=True, parents=True)
-FLAGS.tfdata_dir.append("/train").mkdir(exist_ok=True, parents=True)
-
+FLAGS.tfdata_dir.mkdir(exist_ok=True, parents=True)
+(FLAGS.tfdata_dir / "test").mkdir(exist_ok=True, parents=True)
+(FLAGS.tfdata_dir / "train").mkdir(exist_ok=True, parents=True)
 
 vietnamese_characters = [
     'a', 'à', 'á', 'ả', 'ã', 'ạ',
