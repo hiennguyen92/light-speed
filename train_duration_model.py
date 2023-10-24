@@ -4,9 +4,15 @@ from transformers import Adafactor
 from torch_ema import ExponentialMovingAverage
 import matplotlib.pyplot as plt
 import tensorflow as tf
+from argparse import ArgumentParser
 from models import DurationNet
 device = "cuda" if torch.cuda.is_available() else "cpu"
 tf.config.set_visible_devices([], 'GPU')
+
+parser = ArgumentParser()
+parser.add_argument("--ckpt-dir", type=Path, default="ckpts")
+parser.add_argument("--tfdata", type=str, default="data/tfdata")
+FLAGS = parser.parse_args()
 
 
 def load_tfdata(root, split, batch_size):
@@ -61,8 +67,8 @@ def loss_fn(net, batch):
     return loss
 
 
-ds = load_tfdata("data/tfdata", "train", batch_size)
-val_ds = load_tfdata("data/tfdata", "test", batch_size)
+ds = load_tfdata(FLAGS.tfdata, "train", batch_size)
+val_ds = load_tfdata(FLAGS.tfdata, "test", batch_size)
 
 def prepare_batch(batch):
     return {
@@ -98,7 +104,7 @@ for epoch in range(num_epochs):
 
 ema.copy_to(net.parameters())
 net = net.eval()
-torch.save(net.state_dict(), "ckpts/duration_model.pth")
+torch.save(net.state_dict(), FLAGS.ckpt_dir / f"duration_model.pth")
 
 with torch.inference_mode():
     for batch in val_ds.as_numpy_iterator():
