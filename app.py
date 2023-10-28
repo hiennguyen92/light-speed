@@ -4,6 +4,7 @@ torch.manual_seed(42)
 import json
 import re
 import unicodedata
+import math
 from types import SimpleNamespace
 
 import gradio as gr
@@ -16,7 +17,7 @@ title = "LightSpeed: Vietnamese Male Voice TTS"
 description = "Vietnam Male Voice TTS."
 config_file = "config.json"
 duration_model_path = "./ckpts/duration_model.pth"
-lightspeed_model_path = "./ckpts/ckpt_00090000.pth"
+lightspeed_model_path = "./ckpts/ckpt_00355000.pth"
 phone_set_file = "./data/phone_set.json"
 device = "cuda" if torch.cuda.is_available() else "cpu"
 with open(config_file, "rb") as f:
@@ -126,6 +127,8 @@ def text_to_phone_idx(text):
         elif c == " ":
             # add <sep> phone
             tokens.append(0)
+        else:
+            tokens.append(sil_idx)
     if tokens[0] != sil_idx:
         # insert <sil> phone at the beginning
         tokens = [sil_idx, 0] + tokens
@@ -166,12 +169,15 @@ def text_to_speech(duration_net, generator, text):
         pos[None, :, None] >= start_frame[:, None, :],
         pos[None, :, None] < end_frame[:, None, :],
     ).float()
+    
+    wave_duration = torch.sum(phone_duration).item() / 1000
+    
     with torch.inference_mode():
         y_hat = generator.infer(
             phone_idx, phone_length, spec_length, attn, max_len=None, noise_scale=0.667
         )[0]
     wave = y_hat[0, 0].data.cpu().numpy()
-    return (wave * (2**15)).astype(np.int16)
+    return (wave * (2**15)).astype(np.int16), wave_duration
 
 
 def load_models():
@@ -201,20 +207,32 @@ def speak(text):
     paragraphs = text.split("\n")
     clips = []  # list of audio clips
     # silence = np.zeros(hps.data.sampling_rate // 4)
+    texts = []
+    start = 0
     for paragraph in paragraphs:
         paragraph = paragraph.strip()
         if paragraph == "":
             continue
-        clips.append(text_to_speech(duration_net, generator, paragraph))
+        print("=====")
+        print(paragraph)
+        print("=====")
+        wave, wave_duration = text_to_speech(duration_net, generator, paragraph)
+        clips.append(wave)
+        data = {}
+        data["start"] = round(start, 2)
+        data["end"] = round(start + wave_duration, 2)
+        data["text"] = paragraph
+        start = round(start + wave_duration, 2)
+        texts.append(data)
         # clips.append(silence)
     y = np.concatenate(clips)
-    return hps.data.sampling_rate, y
+    return json.dumps(texts, ensure_ascii=False), (hps.data.sampling_rate, y)
 
 
 gr.Interface(
     fn=speak,
     inputs="text",
-    outputs="audio",
+    outputs=["text", "audio"],
     title=title,
     examples=[
         "Trăm năm trong cõi người ta, chữ tài chữ mệnh khéo là ghét nhau.",
