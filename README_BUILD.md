@@ -1,6 +1,10 @@
 ```
 cd data
 ```
+Create file lexicon.txt
+```
+python3 prepare.py
+```
 
 ```
 #### INSTALL MFA  ####
@@ -26,4 +30,12 @@ mfa train \
     --output_format json \
     --output_directory dataset \
     dataset ./lexicon.txt vbx_mfa
+```
+
+```
+conda deactivate
+```
+
+```
+python3 train_ftdata.py
 ```
